@@ -251,6 +251,8 @@ add_library(libslic3r STATIC
     SLA/SupportTreeMesher.cpp
     SLA/SupportTreeBuildsteps.hpp
     SLA/SupportTreeBuildsteps.cpp
+    SLA/SupportTreeVanek.hpp
+    SLA/SupportTreeVanek.cpp
     SLA/SupportTreeBuilder.cpp
     SLA/Concurrency.hpp
     SLA/SupportTree.hpp
