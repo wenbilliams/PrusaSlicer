@@ -364,9 +364,10 @@ void SLAPrint::Steps::drill_holes(SLAPrintObject &po)
     if (! needs_drilling) {
         mesh_view = po.transformed_mesh();
 
-        if (is_hollowed)
+        if (is_hollowed) {
             sla::hollow_mesh(mesh_view, *po.m_hollowing_data->interior,
                              sla::hfRemoveInsideTriangles);
+        }
 
         BOOST_LOG_TRIVIAL(info) << "Drilling skipped (no holes).";
         return;
@@ -422,49 +423,41 @@ void SLAPrint::Steps::drill_holes(SLAPrintObject &po)
         MeshBoolean::cgal::plus(*holes_mesh_cgal, *cgal_hole);
     }
 
-    if (MeshBoolean::cgal::does_self_intersect(*holes_mesh_cgal))
-        throw Slic3r::SlicingError(L("Too many overlapping holes."));
+    if (MeshBoolean::cgal::does_self_intersect(*holes_mesh_cgal)) {
+        hole_fail = true;
+        for (size_t i = 0; i < drainholes.size(); ++i)
+             drainholes[i].failed = po.model_object()->sla_drain_holes[i].failed = true;
+    }
 
     auto hollowed_mesh_cgal = MeshBoolean::cgal::triangle_mesh_to_cgal(hollowed_mesh);
-
-    if (!MeshBoolean::cgal::does_bound_a_volume(*hollowed_mesh_cgal)) {
-        po.active_step_add_warning(
-            PrintStateBase::WarningLevel::NON_CRITICAL,
-            L("Mesh to be hollowed is not suitable for hollowing (does not "
-              "bound a volume)."));
-    }
-
-    if (!MeshBoolean::cgal::empty(*holes_mesh_cgal)
-        && !MeshBoolean::cgal::does_bound_a_volume(*holes_mesh_cgal)) {
-        po.active_step_add_warning(
-            PrintStateBase::WarningLevel::NON_CRITICAL,
-            L("Unable to drill the current configuration of holes into the "
-              "model."));
-    }
 
     try {
         if (!MeshBoolean::cgal::empty(*holes_mesh_cgal))
             MeshBoolean::cgal::minus(*hollowed_mesh_cgal, *holes_mesh_cgal);
 
         hollowed_mesh = MeshBoolean::cgal::cgal_to_triangle_mesh(*hollowed_mesh_cgal);
-        mesh_view = hollowed_mesh;
 
-        if (is_hollowed) {
-            auto &interior = *po.m_hollowing_data->interior;
-            std::vector<bool> exclude_mask =
-                    create_exclude_mask(mesh_view.its, interior, drainholes);
-
-            sla::remove_inside_triangles(mesh_view, interior, exclude_mask);
-        }
     } catch (const Slic3r::RuntimeError &) {
-        throw Slic3r::SlicingError(L(
-            "Drilling holes into the mesh failed. "
-            "This is usually caused by broken model. Try to fix it first."));
+        hole_fail = true;
+    }
+
+    mesh_view = hollowed_mesh;
+    if (is_hollowed) {
+        auto &interior = *po.m_hollowing_data->interior;
+        std::vector<bool> exclude_mask =
+            create_exclude_mask(mesh_view.its, interior, drainholes);
+
+        sla::remove_inside_triangles(mesh_view, interior, exclude_mask);
     }
 
     if (hole_fail)
-        po.active_step_add_warning(PrintStateBase::WarningLevel::NON_CRITICAL,
-                                   L("Failed to drill some holes into the model"));
+        po.active_step_add_warning(
+            PrintStateBase::WarningLevel::NON_CRITICAL,
+            L("Drilling holes into the mesh failed so "
+              "the visual preview will be limited. The holes that failed are "
+              "marked with red color. This is usually caused by broken or "
+              "overly complex model. The output slices are not affected by "
+              "this error and remain to be correct."));
 }
 
 // The slicing will be performed on an imaginary 1D grid which starts from
@@ -546,6 +539,22 @@ void SLAPrint::Steps::slice_model(SLAPrintObject &po)
                                   diff_ex(po.m_model_slices[i], slice);
                            });
     }
+
+    std::vector<ExPolygons> holes_slices(slice_grid.size());
+    for (auto &drainhole : po.transformed_drainhole_points()) {
+        indexed_triangle_set hole_mesh = drainhole.to_mesh();
+        std::vector<ExPolygons> slices = slice_mesh_ex(hole_mesh, slice_grid, params, thr);
+        for (size_t i = 0; i < slice_grid.size(); ++i) {
+            for (size_t j = 0; j < slices[i].size(); ++j)
+                    holes_slices[i].emplace_back(std::move(slices[i][j]));
+        }
+    }
+    sla::ccr::for_each(size_t(0), holes_slices.size(),
+                       [&po, &holes_slices] (size_t i) {
+                           const ExPolygons &slice = holes_slices[i];
+                           po.m_model_slices[i] =
+                               diff_ex(po.m_model_slices[i], slice);
+                       });
 
     auto mit = slindex_it;
     for (size_t id = 0;
