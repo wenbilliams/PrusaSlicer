@@ -2011,9 +2011,15 @@ void GLCanvas3D::reload_scene(bool refresh_immediately, bool force_full_scene_re
         bool co = dynamic_cast<const ConfigOptionBool*>(m_config->option("complete_objects"))->value;
 
         if (extruders_count > 1 && wt && !co) {
-            // Height of a print (Show at least a slab)
-            double height = std::max(m_model->bounding_box().max(2), 10.0);
-
+            // Calculate height of the tallest printable object that is not outside bed.
+            double height = 0.;
+            /*for (const ModelObject* obj : m_model->objects) {
+                if (obj->printable)
+                    height = std::max(height, obj->bounding_box().max(2));
+            }
+            // Always show at least a slab.
+            double height = std::max(height, 10.0);
+*/
             float x = dynamic_cast<const ConfigOptionFloat*>(m_config->option("wipe_tower_x"))->value;
             float y = dynamic_cast<const ConfigOptionFloat*>(m_config->option("wipe_tower_y"))->value;
             float w = dynamic_cast<const ConfigOptionFloat*>(m_config->option("wipe_tower_width"))->value;

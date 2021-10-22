@@ -2486,6 +2486,7 @@ std::string GCode::extrude_loop(ExtrusionLoop loop, std::string description, dou
 
     if (m_layer->lower_layer != nullptr && lower_layer_edge_grid != nullptr) {
         if (! *lower_layer_edge_grid) {
+            std::cout << "calculating..." << std::endl;
             // Create the distance field for a layer below.
             const coord_t distance_field_resolution = coord_t(scale_(1.) + 0.5);
             *lower_layer_edge_grid = make_unique<EdgeGrid::Grid>();
@@ -2521,6 +2522,7 @@ std::string GCode::extrude_loop(ExtrusionLoop loop, std::string description, dou
         const EdgeGrid::Grid* edge_grid_ptr = (lower_layer_edge_grid && *lower_layer_edge_grid)
                                                 ? lower_layer_edge_grid->get()
                                                 : nullptr;
+        std::cout << "edge_grid_ptr: " << edge_grid_ptr << std::endl;
         Point seam = m_seam_placer.get_seam(*m_layer, seam_position, loop,
                          last_pos, EXTRUDER_CONFIG(nozzle_diameter),
                          (m_layer == NULL ? nullptr : m_layer->object()),
@@ -2620,6 +2622,7 @@ std::string GCode::extrude_multi_path(ExtrusionMultiPath multipath, std::string 
 
 std::string GCode::extrude_entity(const ExtrusionEntity &entity, std::string description, double speed, std::unique_ptr<EdgeGrid::Grid> *lower_layer_edge_grid)
 {
+    std::cout << "extrude_entity: lower_layer_edge_grid: " << lower_layer_edge_grid << std::endl;
     if (const ExtrusionPath* path = dynamic_cast<const ExtrusionPath*>(&entity))
         return this->extrude_path(*path, description, speed);
     else if (const ExtrusionMultiPath* multipath = dynamic_cast<const ExtrusionMultiPath*>(&entity))
