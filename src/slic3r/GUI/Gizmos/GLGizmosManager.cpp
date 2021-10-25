@@ -445,8 +445,10 @@ bool GLGizmosManager::gizmo_event(SLAGizmoEventType action, const Vec2d& mouse_p
         return dynamic_cast<GLGizmoSeam*>(m_gizmos[Seam].get())->gizmo_event(action, mouse_position, shift_down, alt_down, control_down);
     else if (m_current == MmuSegmentation)
         return dynamic_cast<GLGizmoMmuSegmentation*>(m_gizmos[MmuSegmentation].get())->gizmo_event(action, mouse_position, shift_down, alt_down, control_down);
-    else
-        return false;
+    else if (m_current == Simplify && action==SLAGizmoEventType::DiscardChanges)
+        return dynamic_cast<GLGizmoSimplify*>(m_gizmos[Simplify].get())->on_esc_key_down();
+    
+    return false;
 }
 
 ClippingPlane GLGizmosManager::get_clipping_plane() const
@@ -793,9 +795,9 @@ bool GLGizmosManager::on_char(wxKeyEvent& evt)
         {
             if (m_current != Undefined)
             {
-                if ((m_current != SlaSupports) || !gizmo_event(SLAGizmoEventType::DiscardChanges))
+                if ((m_current != SlaSupports && m_current != Simplify)
+                    || !gizmo_event(SLAGizmoEventType::DiscardChanges))
                     reset_all_states();
-
                 processed = true;
             }
             break;
@@ -934,10 +936,6 @@ bool GLGizmosManager::on_key(wxKeyEvent& evt)
             case WXK_NUMPAD_DOWN: case WXK_DOWN: { do_move(-1.0); break; }
             default: { break; }
             }
-        } else if (m_current == Simplify && keyCode == WXK_ESCAPE) {
-            GLGizmoSimplify *simplify = dynamic_cast<GLGizmoSimplify *>(get_current());
-            if (simplify != nullptr) 
-                processed = simplify->on_esc_key_down();
         }
     }
 
