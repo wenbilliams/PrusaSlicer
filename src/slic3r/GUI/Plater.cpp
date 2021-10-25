@@ -3011,9 +3011,9 @@ void Plater::priv::update_print_volume_state()
 {
 #if ENABLE_OUT_OF_BED_DETECTION_IMPROVEMENTS
     const ConfigOptionPoints* opt = dynamic_cast<const ConfigOptionPoints*>(this->config->option("bed_shape"));
-    const Polygon bed_poly = offset(Polygon::new_scale(opt->values), static_cast<float>(scale_(BedEpsilon))).front();
+    const Polygon bed_poly_convex = offset(Geometry::convex_hull(Polygon::new_scale(opt->values).points), static_cast<float>(scale_(BedEpsilon))).front();
     const float bed_height = this->config->opt_float("max_print_height");
-    this->q->model().update_print_volume_state(bed_poly, bed_height);
+    this->q->model().update_print_volume_state(bed_poly_convex, bed_height);
 #else
     BoundingBox     bed_box_2D = get_extents(Polygon::new_scale(this->config->opt<ConfigOptionPoints>("bed_shape")->values));
     BoundingBoxf3   print_volume(unscale(bed_box_2D.min(0), bed_box_2D.min(1), 0.0), unscale(bed_box_2D.max(0), bed_box_2D.max(1), scale_(this->config->opt_float("max_print_height"))));
@@ -4178,8 +4178,11 @@ void Plater::priv::on_right_click(RBtnEvent& evt)
     wxMenu* menu = nullptr;
 
     if (obj_idx == -1) { // no one or several object are selected
-        if (evt.data.second) // right button was clicked on empty space
+        if (evt.data.second) { // right button was clicked on empty space
+            if (!get_selection().is_empty()) // several objects are selected in 3DScene
+                return;
             menu = menus.default_menu();
+        }
         else
             menu = menus.multi_selection_menu();
     }
