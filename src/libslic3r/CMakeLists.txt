@@ -237,6 +237,10 @@ add_library(libslic3r STATIC
     miniz_extension.hpp
     miniz_extension.cpp
     MarchingSquares.hpp
+    VanekTree/VanekTreeFFF.cpp
+    VanekTree/VanekTreeFFF.hpp
+    VanekTree/VanekTree.cpp
+    VanekTree/VanekTree.hpp
     Execution/Execution.hpp
     Execution/ExecutionSeq.hpp
     Execution/ExecutionTBB.hpp
@@ -251,8 +255,6 @@ add_library(libslic3r STATIC
     SLA/SupportTreeMesher.cpp
     SLA/SupportTreeBuildsteps.hpp
     SLA/SupportTreeBuildsteps.cpp
-    SLA/SupportTreeVanek.hpp
-    SLA/SupportTreeVanek.cpp
     SLA/SupportTreeBuilder.cpp
     SLA/Concurrency.hpp
     SLA/SupportTree.hpp
