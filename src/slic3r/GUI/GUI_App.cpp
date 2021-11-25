@@ -55,6 +55,7 @@
 #include "../Utils/PrintHost.hpp"
 #include "../Utils/Process.hpp"
 #include "../Utils/MacDarkMode.hpp"
+#include "../Utils/AppUpdater.hpp"
 #include "slic3r/Config/Snapshot.hpp"
 #include "ConfigSnapshotDialog.hpp"
 #include "FirmwareDialog.hpp"
@@ -1122,6 +1123,7 @@ bool GUI_App::on_init_inner()
                     );
                 }
             }
+            Slic3r::AppUpdater::get_instance().download_file({"https://www.prusa3d.com/downloads/drivers/PrusaSlicer_Win_standalone_2.3.3.exe", boost::filesystem::path(data_dir())/* / "cache" / "download.exe"*/});
             });
         Bind(EVT_SLIC3R_EXPERIMENTAL_VERSION_ONLINE, [this](const wxCommandEvent& evt) {
             app_config->save();
