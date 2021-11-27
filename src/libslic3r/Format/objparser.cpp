@@ -251,9 +251,8 @@ static bool obj_parseline(const char *line, ObjData &data)
 		EATWS();
 
 		MtlLibData mtlData;
-		if (parsemtl(line, mtlData)) {
-			data.mtllibs.push_back(mtlData);
-		}
+		mtlData.mtllib_name = line;
+		data.mtllibs.push_back(mtlData);
 
 		break;
 	}
@@ -374,7 +373,7 @@ static bool mtlparseline(const char *line, MtlLibData &data)
 		data.map_kds.push_back(line);
 	}
 	default:
-    	BOOST_LOG_TRIVIAL(error) << "ObjParser::mtlparseline: Unknown command: " << c1;
+    	BOOST_LOG_TRIVIAL(info) << "ObjParser::mtlparseline: Unknown command: " << c1;
 		break;
 	}
 
@@ -465,41 +464,32 @@ bool objparse(const char *path, ObjData &data)
 	}
 	::fclose(pFile);
 
+	for (size_t i = 0; i < data.mtllibs.size(); i++)
+	{
+		boost::filesystem::path objPath(path);
+		boost::filesystem::path parentPath = objPath.parent_path();
+		std::cout << "Parent path: " << parentPath << std::endl;
+		boost::filesystem::path mtlPath = parentPath / data.mtllibs[i].mtllib_name;
+		std::cout << "Mtllib path: " << mtlPath << std::endl;
+		if (parsemtl(mtlPath.string().c_str(), data.mtllibs[i]))
+		{
+			// Load specified textures
+			for (size_t j = 0; j < data.mtllibs[i].map_kds.size(); j++)
+			{
+				boost::filesystem::path imagePath = parentPath / data.mtllibs[i].map_kds[j];
+				std::cout << "map_Kd image path: " << imagePath << std::endl;
+				boost::filesystem::ifstream stream(imagePath, std::ios::binary);
+				boost::gil::rgb8_image_t img;
+				boost::gil::image_read_settings<boost::gil::jpeg_tag> settings;
+				boost::gil::read_image(stream, img, settings);
+				data.mtllibs[i].texture_images.push_back(img);
+			}
+		}
+	}
+
 	// printf("vertices: %d\r\n", data.vertices.size() / 4);
 	// printf("coords: %d\r\n", data.coordinates.size());
 	return true;
-}
-
-bool objparse(std::istream &stream, ObjData &data)
-{
-    Slic3r::CNumericLocalesSetter locales_setter;
-    
-    try {
-        char buf[65536 * 2];
-        size_t len = 0;
-        size_t lenPrev = 0;
-        while ((len = size_t(stream.read(buf + lenPrev, 65536).gcount())) != 0) {
-            len += lenPrev;
-            size_t lastLine = 0;
-            for (size_t i = 0; i < len; ++ i)
-                if (buf[i] == '\r' || buf[i] == '\n') {
-                    buf[i] = 0;
-                    char *c = buf + lastLine;
-                    while (*c == ' ' || *c == '\t')
-                        ++ c;
-                    obj_parseline(c, data);
-                    lastLine = i + 1;
-                }
-            lenPrev = len - lastLine;
-            memmove(buf, buf + lastLine, lenPrev);
-        }
-    }
-    catch (std::bad_alloc&) {
-    	BOOST_LOG_TRIVIAL(error) << "ObjParser: Out of memory";
-    	return false;
-    }
-    
-    return true;
 }
 
 template<typename T> 

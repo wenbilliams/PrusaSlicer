@@ -4,6 +4,9 @@
 #include <string>
 #include <vector>
 #include <istream>
+#include <boost/gil.hpp>
+#include <boost/gil/extension/io/png.hpp>
+#include <boost/gil/extension/io/jpeg.hpp>
 
 namespace ObjParser {
 
@@ -84,6 +87,9 @@ struct MtlLibData {
 
 	// Albedo color texture info
 	std::vector<std::string>		map_kds;
+
+	// Albedo color texture info
+	std::vector<boost::gil::rgb8_image_t> texture_images;
 };
 
 inline bool operator==(const MtlLibData &v1, const MtlLibData &v2)
