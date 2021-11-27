@@ -247,9 +247,14 @@ static bool obj_parseline(const char *line, ObjData &data)
 			*(line ++) != 'b')
 			return false;
 		// mtllib [external .mtl file name]
-		// printf("mtllib %s\r\n", line);
+		printf("mtllib %s\r\n", line);
 		EATWS();
-		data.mtllibs.push_back(std::string(line));
+
+		MtlLibData mtlData;
+		if (parsemtl(line, mtlData)) {
+			data.mtllibs.push_back(mtlData);
+		}
+
 		break;
 	}
 	case 'u':
@@ -321,6 +326,102 @@ static bool obj_parseline(const char *line, ObjData &data)
 		break;
 	}
 
+	return true;
+}
+
+static bool mtlparseline(const char *line, MtlLibData &data)
+{
+	if (*line == 0)
+		return true;
+
+    assert(Slic3r::is_decimal_separator_point());
+
+	// Ignore whitespaces at the beginning of the line.
+	//FIXME is this a good idea?
+	EATWS();
+
+	char c1 = *line ++;
+	switch (c1) {
+	case '#':
+		// Comment, ignore the rest of the line.
+		break;
+	case 'n':
+	{
+		if (*(line ++) != 'e' ||
+			*(line ++) != 'w' ||
+			*(line ++) != 'm' ||
+			*(line ++) != 't' ||
+			*(line ++) != 'l')
+			return false;
+
+		printf("newmtl %s\r\n", line);
+		EATWS();
+
+		data.newmtls.push_back(line);
+	}
+	case 'm':
+	{
+		if (*(line ++) != 'a' ||
+			*(line ++) != 'p' ||
+			*(line ++) != '_' ||
+			*(line ++) != 'K' ||
+			*(line ++) != 'd')
+			return false;
+
+		printf("map_Kd %s\r\n", line);
+		EATWS();
+
+		data.map_kds.push_back(line);
+	}
+	default:
+    	BOOST_LOG_TRIVIAL(error) << "ObjParser::mtlparseline: Unknown command: " << c1;
+		break;
+	}
+
+	return true;
+}
+
+bool parsemtl(const char *path, MtlLibData &data)
+{
+    Slic3r::CNumericLocalesSetter locales_setter;
+
+	FILE *pFile = boost::nowide::fopen(path, "rt");
+	if (pFile == 0)
+		return false;
+	try {
+		char buf[65536 * 2];
+		size_t len = 0;
+		size_t lenPrev = 0;
+		while ((len = ::fread(buf + lenPrev, 1, 65536, pFile)) != 0) {
+			len += lenPrev;
+			size_t lastLine = 0;
+			for (size_t i = 0; i < len; ++ i)
+				if (buf[i] == '\r' || buf[i] == '\n') {
+					buf[i] = 0;
+					char *c = buf + lastLine;
+					while (*c == ' ' || *c == '\t')
+						++ c;
+					//FIXME check the return value and exit on error?
+					// Will it break parsing of some obj files?
+					mtlparseline(c, data);
+					lastLine = i + 1;
+				}
+			lenPrev = len - lastLine;
+			if (lenPrev > 65536) {
+		    	BOOST_LOG_TRIVIAL(error) << "ObjParser::parsemtl: Excessive line length";
+				::fclose(pFile);
+				return false;
+			}
+			memmove(buf, buf + lastLine, lenPrev);
+		}
+    }
+    catch (std::bad_alloc&) {
+    	BOOST_LOG_TRIVIAL(error) << "ObjParser::parsemtl: Out of memory";
+	}
+	::fclose(pFile);
+
+	// printf("vertices: %d\r\n", data.vertices.size() / 4);
+	// printf("coords: %d\r\n", data.coordinates.size());
 	return true;
 }
 

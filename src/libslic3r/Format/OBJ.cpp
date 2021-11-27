@@ -28,7 +28,7 @@ bool load_obj(const char *path, TriangleMesh *meshptr)
         BOOST_LOG_TRIVIAL(error) << "load_obj: failed to parse " << path;
         return false;
     }
-    
+
     // Count the faces and verify, that all faces are triangular.
     size_t num_faces = 0;
     size_t num_quads = 0;

@@ -74,6 +74,26 @@ inline bool operator==(const ObjSmoothingGroup &v1, const ObjSmoothingGroup &v2)
 		v1.smoothingGroupID == v2.smoothingGroupID;
 }
 
+// Struct holding relevant info about a MTL file
+struct MtlLibData {
+	// File name
+	std::string mtllib_name;
+
+	// List of mtls within the mtllib
+	std::vector<std::string>        newmtls;
+
+	// Albedo color texture info
+	std::vector<std::string>		map_kds;
+};
+
+inline bool operator==(const MtlLibData &v1, const MtlLibData &v2)
+{
+	return 
+		v1.mtllib_name	== v2.mtllib_name &&
+		v1.newmtls == v2.newmtls && 
+		v1.map_kds == v2.map_kds;
+}
+
 struct ObjData {
 	// Version of the data structure for load / store in the private binary format.
 	int								version;
@@ -87,7 +107,7 @@ struct ObjData {
 	// u, v, w
 	std::vector<float>				parameters;
 
-	std::vector<std::string>		mtllibs;
+	std::vector<MtlLibData>		    mtllibs;
 	std::vector<ObjUseMtl>			usemtls;
 	std::vector<ObjObject>			objects;
 	std::vector<ObjGroup>			groups;
@@ -99,6 +119,8 @@ struct ObjData {
 
 extern bool objparse(const char *path, ObjData &data);
 extern bool objparse(std::istream &stream, ObjData &data);
+
+extern bool parsemtl(const char *path, MtlLibData &data);
 
 extern bool objbinsave(const char *path, const ObjData &data);
 
